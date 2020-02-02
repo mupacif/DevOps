@@ -6,14 +6,39 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'ubuntu-latest'
+variables:
+  serverNameImg: 'graphnode'
 
-steps:
-- script: echo Hello, world!$(param1)
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+jobs:
+- job: Build
+  steps:
+    - task: Docker@2
+      displayName: Login to Docker Hub
+      inputs:
+        command: login
+        containerRegistry: dockerRegistryServiceConnection
+    - task: Docker@2
+      displayName: Build an image
+      inputs:
+        repository: $(serverNameImg)
+        command: buildAndPush
+        Dockerfile: server/Dockerfile.dev
+    - task: Docker@2
+      displayName: Logout of ACR
+      inputs:
+        command: logout
+        containerRegistry: dockerRegistryServiceConnection
+      
+- deployment: VMDeploy
+  displayName: web
+  environment:
+    name: ovh
+    resourceType: VirtualMachine
+  strategy:
+    runOnce:
+      preDeploy:
+          steps:
+          - bash: cd ~ & git pull origin master
+      deploy:
+        steps:
+        - script: echo 'lool'
